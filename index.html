@@ -222,28 +222,6 @@
                 max-width: 90%;
             }
         }
-        
-        /* Typing indicator styles */
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-        }
-        .typing-indicator .dot {
-            animation: typingAnimation 1.4s infinite;
-            display: inline-block;
-            margin: 0 2px;
-        }
-        .typing-indicator .dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        .typing-indicator .dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        @keyframes typingAnimation {
-            0% { opacity: 0.2; }
-            20% { opacity: 1; }
-            100% { opacity: 0.2; }
-        }
     </style>
 </head>
 <body>
@@ -286,6 +264,10 @@
             const chatMessages = document.getElementById('chatMessages');
             const messageInput = document.getElementById('messageInput');
             const sendButton = document.getElementById('sendButton');
+            
+            // API configuration
+            const API_KEY = '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'; 
+            const API_URL = 'https://api.openai.com/v1/chat/completions'; // Endpoint corregido para ChatGPT
             
             // Function to add a message to the chat
             function addMessage(text, isUser) {
@@ -330,8 +312,8 @@
                 showTypingIndicator();
                 
                 try {
-                    // Call the serverless function instead of directly calling OpenAI
-                    const response = await callChatbotFunction(userMessage);
+                    // Call the external chatbot API
+                    const response = await callChatbotAPI(userMessage);
                     
                     // Remove typing indicator and add bot response
                     removeTypingIndicator();
@@ -344,20 +326,34 @@
                 }
             }
             
-            // Call the Netlify serverless function
-            async function callChatbotFunction(message) {
-                // If the network is not available, fall back to local responses
+            // Call the external chatbot API
+            async function callChatbotAPI(message) {
+                // If the API is not available, fall back to local responses
                 if (!navigator.onLine) { 
                     return generateFallbackResponse(message);
                 }
                 
                 try {
-                    const response = await fetch('/.netlify/functions/chat', {
+                    const response = await fetch(API_URL, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${API_KEY}`
                         },
-                        body: JSON.stringify({ message: message })
+                        body: JSON.stringify({
+                            model: "gpt-4",
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: "You are the Hallownest Assistant, a helpful AI themed after the game Hollow Knight. Use references to the game when appropriate, and adopt a slightly mystical, knowledgeable tone that fits the atmosphere of Hallownest. Be concise but helpful."
+                                },
+                                {
+                                    role: "user",
+                                    content: message
+                                }
+                            ],
+                            max_tokens: 150
+                        })
                     });
                     
                     if (!response.ok) {
@@ -365,7 +361,7 @@
                     }
                     
                     const data = await response.json();
-                    return data.message || "I'm not sure how to respond to that.";
+                    return data.choices[0].message.content || "I'm not sure how to respond to that.";
                 } catch (error) {
                     console.error('API call failed:', error);
                     return generateFallbackResponse(message);
@@ -407,6 +403,32 @@
                     processMessage();
                 }
             });
+            
+            // Add CSS for typing indicator
+            const style = document.createElement('style');
+            style.textContent = `
+                .typing-indicator {
+                    display: flex;
+                    align-items: center;
+                }
+                .typing-indicator .dot {
+                    animation: typingAnimation 1.4s infinite;
+                    display: inline-block;
+                    margin: 0 2px;
+                }
+                .typing-indicator .dot:nth-child(2) {
+                    animation-delay: 0.2s;
+                }
+                .typing-indicator .dot:nth-child(3) {
+                    animation-delay: 0.4s;
+                }
+                @keyframes typingAnimation {
+                    0% { opacity: 0.2; }
+                    20% { opacity: 1; }
+                    100% { opacity: 0.2; }
+                }
+            `;
+            document.head.appendChild(style);
         });
     </script>
 </body>
